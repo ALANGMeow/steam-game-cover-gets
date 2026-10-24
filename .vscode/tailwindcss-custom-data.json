@@ -1,0 +1,12 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    { "name": "@tailwind", "description": "Tailwind CSS directive to inject base, components and utilities." },
+    { "name": "@apply", "description": "Tailwind CSS apply utility classes to CSS rules." },
+    { "name": "@variants" },
+    { "name": "@responsive" },
+    { "name": "@screen" },
+    { "name": "@layer" },
+    { "name": "@config" }
+  ]
+}

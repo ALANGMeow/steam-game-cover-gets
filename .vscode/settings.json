@@ -1,0 +1,13 @@
+{
+  "css.customData": [
+    ".vscode/tailwindcss-custom-data.json"
+  ],
+  "css.lint.unknownAtRules": "ignore",
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "postcss": "css"
+  },
+  "editor.quickSuggestions": {
+    "strings": true
+  }
+}
