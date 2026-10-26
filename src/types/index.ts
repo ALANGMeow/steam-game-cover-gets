@@ -16,6 +16,23 @@ export interface LoadedImage {
   transparent?: boolean
 }
 
+export interface SteamCover {
+  variant: string
+  label: string
+  // 按当前资源、原始资源、旧地址的顺序尝试加载
+  urls: string[]
+  transparent?: boolean
+}
+
+export interface AppInfoResponse {
+  ok: boolean
+  appid: number
+  slug: string
+  name?: string
+  covers: SteamCover[]
+  error?: string
+}
+
 export interface ToastMessage {
   message: string
   type?: 'success' | 'error' | 'info'

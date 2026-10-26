@@ -3,14 +3,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import JSZip from 'jszip'
 import { Button, Input, Loading, Toast, Modal, MasonryGrid } from '@/components/ui'
-import { LoadedImage, ToastMessage, SearchResult, SearchResponse } from '@/types'
+import { AppInfoResponse, LoadedImage, ToastMessage, SearchResult, SearchResponse } from '@/types'
 import { parseAppId, copyToClipboard } from '@/lib/utils'
+import { getSteamCovers } from '@/lib/steam-assets'
 import { useI18n } from '@/components/layout/LanguageProvider'
 import AdSlot from '@/components/ads/AdSlot'
 
 // 读取广告单元 ID（生产环境可配置），未配置则保持占位
 const ADS_SLOT_RECT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_RECT || ''
 const ADS_SLOT_BANNER = process.env.NEXT_PUBLIC_ADSENSE_SLOT_BANNER || ''
+
+// 单张资源失败或超时后继续尝试候选地址, 不阻塞整组封面.
+function tryLoadImageWithDetails(url: string): Promise<{ ok: boolean; naturalWidth?: number; naturalHeight?: number }> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const finish = (ok: boolean) => {
+      clearTimeout(timer)
+      img.onload = null
+      img.onerror = null
+      resolve({ ok, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight })
+    }
+    const timer = setTimeout(() => finish(false), 10000)
+    img.referrerPolicy = 'no-referrer'
+    img.onload = () => finish(true)
+    img.onerror = () => finish(false)
+    // 保留 Steam 自带的版本查询参数, 预览、复制和下载使用同一真实地址.
+    img.src = url
+  })
+}
 
 const HomePage: React.FC = () => {
   const { t } = useI18n()
@@ -65,49 +85,42 @@ const HomePage: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }, [])
 
-  // 图片加载检测函数
-  const tryLoadImageWithDetails = (url: string): Promise<{ ok: boolean; naturalWidth?: number; naturalHeight?: number }> => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.referrerPolicy = 'no-referrer'
-      img.onload = () => resolve({ ok: true, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight })
-      img.onerror = () => resolve({ ok: false })
-      // 添加时间戳防止缓存影响检测
-      img.src = url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now()
-    })
-  }
-
   // 新增：抽取的封面抓取函数，供表单提交和建议选择复用
   const fetchCovers = useCallback(async (parsedId: string) => {
     setLoading(true)
     setImages([])
     setCurrentAppId(parsedId)
 
-    // 资源清单：封面为 jpg，logo 为带透明通道的 png
-    const variants: { name: string; ext: string; transparent?: boolean }[] = [
-      { name: 'header', ext: 'jpg' },
-      { name: 'library_600x900', ext: 'jpg' },
-      { name: 'library_hero', ext: 'jpg' },
-      { name: 'capsule_616x353', ext: 'jpg' },
-      { name: 'capsule_467x181', ext: 'jpg' },
-      { name: 'capsule_231x87', ext: 'jpg' },
-      { name: 'logo', ext: 'png', transparent: true },
-      { name: 'logo_2x', ext: 'png', transparent: true },
-    ]
-
     try {
-      const tasks = variants.map(async (v) => {
-        const url = `https://cdn.akamai.steamstatic.com/steam/apps/${parsedId}/${v.name}.${v.ext}`
-        const result = await tryLoadImageWithDetails(url)
-        return result.ok ? {
-          variant: v.name,
-          url,
-          label: v.name.replace(/_/g, ' '),
-          ext: v.ext,
-          transparent: v.transparent,
-          naturalWidth: result.naturalWidth,
-          naturalHeight: result.naturalHeight
-        } as LoadedImage : null
+      let covers = getSteamCovers(parsedId)
+      try {
+        const resp = await fetch(`/api/appinfo?appid=${encodeURIComponent(parsedId)}`, {
+          signal: AbortSignal.timeout(10000),
+        })
+        if (resp.ok) {
+          const data = await resp.json() as AppInfoResponse
+          if (data.ok && data.appid === Number(parsedId) && data.covers?.length) covers = data.covers
+        }
+      } catch {
+        // 元数据服务不可用时继续使用旧资源地址.
+      }
+
+      const tasks = covers.map(async (cover): Promise<LoadedImage | null> => {
+        for (const url of cover.urls) {
+          const result = await tryLoadImageWithDetails(url)
+          if (!result.ok) continue
+          const ext = new URL(url).pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || 'jpg'
+          return {
+            variant: cover.variant,
+            url,
+            label: cover.label,
+            ext,
+            transparent: cover.transparent || ext === 'png',
+            naturalWidth: result.naturalWidth,
+            naturalHeight: result.naturalHeight,
+          }
+        }
+        return null
       })
 
       const results = await Promise.all(tasks)
@@ -307,8 +320,7 @@ const HomePage: React.FC = () => {
       // 并发拉取图片二进制（CDN 带 Access-Control-Allow-Origin: *，可直接 fetch）
       const entries = await Promise.all(
         images.map(async (img) => {
-          const cleanUrl = img.url.replace(/\?ts=\d+$/, '')
-          const resp = await fetch(cleanUrl)
+          const resp = await fetch(img.url)
           if (!resp.ok) throw new Error(`fetch ${img.variant} failed: ${resp.status}`)
           const blob = await resp.blob()
           // 文件名：游戏名_类型.后缀，如 CounterStrike_2_header.jpg
@@ -524,7 +536,7 @@ const HomePage: React.FC = () => {
                     key={`${image.variant}-${index}`}
                     className="liquidGlass-wrapper animate-slide-up"
                     style={{ animationDelay: `${index * 100}ms` }}
-                    onClick={() => handleCopy(image.url.replace(/\?ts=\d+$/, ''))}
+                    onClick={() => handleCopy(image.url)}
                   >
                     <div className="liquidGlass-effect"></div>
                     <div className="liquidGlass-tint"></div>
@@ -542,7 +554,7 @@ const HomePage: React.FC = () => {
                         } : undefined}
                       >
                         <img
-                          src={image.url.replace(/\?ts=\d+$/, '')}
+                          src={image.url}
                           alt={image.label}
                           className="w-full h-auto transition-transform duration-300 hover:scale-105"
                           loading="lazy"

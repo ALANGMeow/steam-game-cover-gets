@@ -74,11 +74,14 @@ export async function GET(req: Request) {
         const appid = Number(idVal)
         const nameVal = 'name' in it ? (it as { name?: unknown }).name : ''
         const name = typeof nameVal === 'string' ? nameVal : String(nameVal ?? '')
+        const tinyImage = 'tiny_image' in it ? (it as { tiny_image?: unknown }).tiny_image : undefined
         if (!Number.isFinite(appid) || !name) return null
         return {
           appid,
           name,
-          capsule: `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_184x69.jpg`
+          capsule: typeof tinyImage === 'string' && tinyImage.startsWith('https://')
+            ? tinyImage
+            : `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_184x69.jpg`
         }
       })
       .filter((r): r is SearchResult => r !== null)
