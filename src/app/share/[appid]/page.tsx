@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/site'
 
 // Build absolute URL based on metadataBase defined in root layout
 function buildURL(path: string, params?: Record<string, string | number | undefined>) {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const base = SITE_URL
   const url = new URL(path, base)
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
@@ -18,7 +19,7 @@ async function fetchName(appid: number, l = 'en', cc = 'us'): Promise<string | n
     url.searchParams.set('appids', String(appid))
     url.searchParams.set('l', l)
     url.searchParams.set('cc', cc)
-    const resp = await fetch(url.toString(), { next: { revalidate: 3600 } })
+    const resp = await fetch(url.toString(), { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!resp.ok) return null
     const data = (await resp.json()) as unknown
     const node = (data as Record<string, unknown>)?.[String(appid)]
@@ -33,10 +34,11 @@ async function fetchName(appid: number, l = 'en', cc = 'us'): Promise<string | n
 }
 
 export async function generateMetadata(input: unknown): Promise<Metadata> {
-  const { params, searchParams } = (input || {}) as {
-    params?: { appid?: string }
-    searchParams?: Record<string, string | string[] | undefined>
+  const props = (input || {}) as {
+    params?: Promise<{ appid?: string }>
+    searchParams?: Promise<Record<string, string | string[] | undefined>>
   }
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams])
 
   const appidNum = params?.appid ? Number(params.appid) : NaN
   const lRaw = (searchParams && typeof searchParams.l === 'string') ? searchParams.l : 'en'
@@ -73,8 +75,9 @@ export async function generateMetadata(input: unknown): Promise<Metadata> {
   }
 }
 
-export default function SharePage(input: unknown) {
-  const { params } = (input || {}) as { params?: { appid?: string } }
+export default async function SharePage(input: unknown) {
+  const props = (input || {}) as { params?: Promise<{ appid?: string }> }
+  const params = await props.params
   const appid = params?.appid ?? ''
   return (
     <main className="container-responsive py-16">

@@ -7,11 +7,6 @@ import { AppInfoResponse, LoadedImage, ToastMessage, SearchResult, SearchRespons
 import { parseAppId, copyToClipboard } from '@/lib/utils'
 import { getSteamCovers } from '@/lib/steam-assets'
 import { useI18n } from '@/components/layout/LanguageProvider'
-import AdSlot from '@/components/ads/AdSlot'
-
-// 读取广告单元 ID（生产环境可配置），未配置则保持占位
-const ADS_SLOT_RECT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_RECT || ''
-const ADS_SLOT_BANNER = process.env.NEXT_PUBLIC_ADSENSE_SLOT_BANNER || ''
 
 // 单张资源失败或超时后继续尝试候选地址, 不阻塞整组封面.
 function tryLoadImageWithDetails(url: string): Promise<{ ok: boolean; naturalWidth?: number; naturalHeight?: number }> {
@@ -50,31 +45,6 @@ const HomePage: React.FC = () => {
   const suggestAbortRef = useRef<AbortController | null>(null)
   const suggestCacheRef = useRef<Map<string, { results: SearchResult[]; ts: number }>>(new Map())
   const inFlightSuggestRef = useRef<Map<string, Promise<SearchResponse>>>(new Map())
-
-  // 新增：广告可见性与高度同步
-  const [leftAdVisible, setLeftAdVisible] = useState(false)
-  const [rightAdVisible, setRightAdVisible] = useState(false)
-  const [bannerVisible, setBannerVisible] = useState(false)
-  const [searchCardHeight, setSearchCardHeight] = useState<number | undefined>(undefined)
-  const searchCardRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    const el = searchCardRef.current
-    if (!el) return
-    const update = () => setSearchCardHeight(el.offsetHeight)
-    update()
-    let ro: ResizeObserver | null = null
-    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-      ro = new ResizeObserver(() => update())
-      ro.observe(el)
-    }
-    const onResize = () => update()
-    window.addEventListener('resize', onResize)
-    return () => {
-      ro?.disconnect()
-      window.removeEventListener('resize', onResize)
-    }
-  }, [])
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = Date.now().toString()
@@ -375,28 +345,12 @@ const HomePage: React.FC = () => {
 
   return (
     <div>
-      <div className="container-responsive py-6 md:py-8">
+      <div className="container-responsive pt-6 pb-12 md:pt-8 md:pb-16">
         {/* 搜索区域 */}
         <div className="mb-12 md:mb-16 px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-            {/* 左侧小卡片广告（桌面端显示） */}
-            <div className="hidden lg:block lg:col-span-3">
-              <div
-                className={leftAdVisible ? "glass-card h-full flex items-center justify-center p-4 transition-all duration-300 opacity-100" : "relative h-0 p-0 opacity-0 transition-all duration-300"}
-                style={leftAdVisible && searchCardHeight ? { height: searchCardHeight } : undefined}
-              >
-                <AdSlot
-                  className="max-w-full"
-                  format="rectangle"
-                  slot={ADS_SLOT_RECT || undefined}
-                  onFilled={() => setLeftAdVisible(true)}
-                />
-              </div>
-            </div>
-
-            {/* 中间搜索卡片 */}
-            <div className="lg:col-span-6">
-              <div ref={searchCardRef} className="glass-card">
+          <div className="max-w-2xl mx-auto">
+            <div>
+              <div className="glass-card">
                 <h3 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 apple-gradient text-center">{t('search_title')}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="relative">
@@ -490,20 +444,6 @@ const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* 右侧小卡片广告（桌面端显示） */}
-            <div className="hidden lg:block lg:col-span-3">
-              <div
-                className={rightAdVisible ? "glass-card h-full flex items-center justify-center p-4 transition-all duration-300 opacity-100" : "relative h-0 p-0 opacity-0 transition-all duration-300"}
-                style={rightAdVisible && searchCardHeight ? { height: searchCardHeight } : undefined}
-              >
-                <AdSlot
-                  className="max-w-full"
-                  format="rectangle"
-                  slot={ADS_SLOT_RECT || undefined}
-                  onFilled={() => setRightAdVisible(true)}
-                />
-              </div>
-            </div>
           </div>
         </div>
 
@@ -575,18 +515,6 @@ const HomePage: React.FC = () => {
             </MasonryGrid>
           </div>
         )}
-        {/* 底部横幅广告（页脚上方） */}
-        <div className="mt-8 md:mt-12 px-4 mb-8 md:mb-12">
-          <div className={bannerVisible ? "glass-card p-2 transition-all duration-300 opacity-100" : "relative h-0 p-0 opacity-0 transition-all duration-300"}>
-            <AdSlot
-              className="w-full"
-              format="horizontal"
-              responsive
-              slot={ADS_SLOT_BANNER || undefined}
-              onFilled={() => setBannerVisible(true)}
-            />
-          </div>
-        </div>
       </div>
 
       {/* 帮助模态框 */}

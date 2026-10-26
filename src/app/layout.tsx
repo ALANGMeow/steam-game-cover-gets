@@ -5,6 +5,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { LanguageProvider } from '@/components/layout/LanguageProvider'
+import { SITE_MAINTAINER, SITE_URL } from '@/lib/site'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -12,8 +13,9 @@ export const metadata: Metadata = {
   title: 'Steam 封面获取器',
   description: '获取Steam游戏封面图片的工具',
   keywords: ['Steam', '封面', '游戏封面', 'Steam Cover', 'AppID', 'Game Art'],
-  authors: [{ name: 'laogou717' }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3010'),
+  authors: [{ name: SITE_MAINTAINER, url: 'https://github.com/ALANGMeow' }],
+  creator: SITE_MAINTAINER,
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Steam 封面获取器',
     description: '输入 AppID、链接或名称，快速获取 Steam 游戏封面',
@@ -38,14 +40,6 @@ export default function RootLayout({ children, }: { children: React.ReactNode })
   return (
     <html lang="zh">
       <head>
-        {/* Google AdSense（仅生产启用，且要求提供 client） */}
-        {process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ADSENSE_CLIENT && (
-          <script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT}`}
-            crossOrigin="anonymous"
-          />
-        )}
         <meta name="robots" content="index, follow" />
         <meta name="googlebot" content="index, follow" />
         {/* 多语言 SEO 辅助 */}
@@ -58,11 +52,11 @@ export default function RootLayout({ children, }: { children: React.ReactNode })
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
-              url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3010'}/`,
+              url: `${SITE_URL}/`,
               name: 'Steam 封面获取器',
               potentialAction: {
                 '@type': 'SearchAction',
-                target: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3010'}/?q={search_term_string}`,
+                target: `${SITE_URL}/?q={search_term_string}`,
                 'query-input': 'required name=search_term_string',
               },
             }),

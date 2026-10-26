@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL
   return {
     rules: [
       { userAgent: '*', allow: '/' },
@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'CCBot', allow: '/' },
       { userAgent: 'Google-Extended', allow: '/' },
     ],
-    sitemap: base ? `${base}/sitemap.xml` : undefined,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

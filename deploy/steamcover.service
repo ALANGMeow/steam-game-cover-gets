@@ -1,0 +1,28 @@
+[Unit]
+Description=Steam Cover Next.js
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=steamcover
+Group=steamcover
+WorkingDirectory=/opt/steamcover/current
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NEXT_PUBLIC_SITE_URL=https://steamcover.alang.love
+Environment=NODE_OPTIONS=--max-old-space-size=256
+ExecStart=/usr/local/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3017
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+MemoryMax=512M
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/steamcover/current/.next/cache
+
+[Install]
+WantedBy=multi-user.target

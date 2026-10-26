@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { SHARE_SITE_LABEL, SITE_URL } from '@/lib/site'
 
 export const runtime = 'edge'
 export const alt = 'Steam 封面获取器 - Twitter 分享图'
@@ -17,7 +18,6 @@ async function fetchName(appid: number, l = 'en', cc = 'us'): Promise<string | n
     const node = (data as Record<string, unknown>)?.[String(appid)]
     if (!node || typeof node !== 'object' || !('success' in node)) return null
     const obj = node as { success?: unknown; data?: { name?: unknown } }
-    const ok = obj.success === true
     const rawName = obj.data?.name
     const name = typeof rawName === 'string' ? rawName : null
     return name
@@ -27,7 +27,7 @@ async function fetchName(appid: number, l = 'en', cc = 'us'): Promise<string | n
 }
 
 export default async function Image(req: Request) {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const base = SITE_URL
   let url: URL
   try {
     url = new URL(req.url, base)
@@ -95,7 +95,7 @@ export default async function Image(req: Request) {
         >
           {title}
         </div>
-        <div style={{ marginTop: 10, fontSize: 18, opacity: 0.85 }}>steamcover.laogou717.com</div>
+        <div style={{ marginTop: 10, fontSize: 18, opacity: 0.85 }}>{SHARE_SITE_LABEL}</div>
       </div>
     ),
     {
